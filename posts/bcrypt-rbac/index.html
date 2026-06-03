@@ -65,7 +65,7 @@ BCrypt — Password Hashing When a user creates a password, you should never sto
 Why? Because if your database is ever hacked, every user’s password is exposed instantly.">
 	<meta itemprop="datePublished" content="2025-06-03T00:00:00+00:00">
 	<meta itemprop="dateModified" content="2025-06-03T00:00:00+00:00">
-	<meta itemprop="wordCount" content="380">
+	<meta itemprop="wordCount" content="237">
 	<meta itemprop="keywords" content="Security,Bcrypt,Rbac,Spring-Boot,Backend">
 	<meta name="twitter:card" content="summary">
 	<meta name="twitter:title" content="BCrypt and RBAC - Two Pillars of Application Security">
@@ -135,49 +135,37 @@ Why? Because if your database is ever hacked, every user’s password is exposed
 <h2 id="bcrypt--password-hashing">BCrypt — Password Hashing</h2>
 <p>When a user creates a password, you should never store it as plain text in your database.</p>
 <p>Why? Because if your database is ever hacked, every user&rsquo;s password is exposed instantly.</p>
-<p>BCrypt solves this by converting the password into an unreadable string called a hash.</p>
+<p>BCrypt converts the password into an unreadable string called a hash.</p>
 <p>Plain text → mypass123</p>
 <p>BCrypt hash → $2a$12$4WZyez9ul2guo9qMGTQxNOyYkhVwJb3yUPnJSfYI2i3sr7CQrZsGW</p>
 <p>Try it yourself here: <a href="https://bcrypt-generator.com/">https://bcrypt-generator.com/</a></p>
 <h2 id="key-features">Key Features</h2>
 <ol>
 <li>One-way hashing — cannot be reversed</li>
-<li>Salt — random data added before hashing, so the same password gives a different hash every time</li>
-<li>Cost Factor — intentionally slow, you can control it</li>
-<li>Brute Force Resistance — slow hashing = hard to crack</li>
-<li>Industry Standard — used in Spring Security, Node.js, Django, BCrypt.js</li>
+<li>Salt — same password gives different hash every time</li>
+<li>Cost Factor — intentionally slow, hard to brute force</li>
+<li>Industry Standard — Spring Security, Node.js, Django all use it</li>
 </ol>
-<h2 id="how-it-works">How It Works</h2>
-<p>User enters password → BCrypt hashes it → Compares with stored hash → Match = Login Success</p>
 <h2 id="rbac--role-based-access-control">RBAC — Role Based Access Control</h2>
-<p>BCrypt gets you inside the application. But what can you do once you are inside?</p>
-<p>That is where RBAC comes in. RBAC controls what each user is allowed to access based on their role.</p>
+<p>BCrypt gets you inside the application. But what can you do once inside?</p>
+<p>That is where RBAC comes in.</p>
 <h2 id="real-world-examples">Real World Examples</h2>
 <p>Bank:</p>
 <ul>
-<li>Teller → Can process transactions</li>
-<li>Branch Manager → Can approve large transactions</li>
-<li>Auditor → Can only view, never modify</li>
+<li>Teller can process transactions</li>
+<li>Branch Manager can approve large transactions</li>
+<li>Auditor can only view never modify</li>
 </ul>
 <p>Hospital:</p>
 <ul>
-<li>Doctor → Can write prescriptions</li>
-<li>Nurse → Can view prescriptions, not write</li>
-<li>Receptionist → Can only book appointments</li>
+<li>Doctor can write prescriptions</li>
+<li>Nurse can view prescriptions not write</li>
+<li>Receptionist can only book appointments</li>
 </ul>
-<h2 id="key-features-1">Key Features</h2>
-<ol>
-<li>Each URL and feature is locked to specific roles</li>
-<li>Unauthorized access is blocked automatically</li>
-<li>Users only see what they are supposed to see</li>
-</ol>
-<h2 id="how-it-works-1">How It Works</h2>
-<p>User logs in → Role is identified → User requests a page → Role checked → Allowed or Blocked</p>
 <h2 id="why-you-need-both">Why You Need BOTH</h2>
-<p>BCrypt without RBAC — passwords are safe but any logged-in user can do anything.</p>
-<p>RBAC without BCrypt — access is controlled but if the database leaks, all passwords are exposed.</p>
+<p>BCrypt without RBAC — passwords are safe but any user can do anything.</p>
+<p>RBAC without BCrypt — access is controlled but database leak exposes all passwords.</p>
 <p>Together they are the minimum viable security setup for any backend application.</p>
-<p>Currently implementing both in a Spring Boot R&amp;D portal at Gabriel India Limited — BCrypt + RBAC were the first two things wired in, before any business feature was written.</p>
 <ul class="pa0">
   
    <li class="list di">
