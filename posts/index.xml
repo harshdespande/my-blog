@@ -18,7 +18,7 @@
 &lt;p&gt;But they solve completely different problems. Let me break it down.&lt;/p&gt;
 &lt;h2 id=&#34;bcrypt--password-hashing&#34;&gt;BCrypt — Password Hashing&lt;/h2&gt;
 &lt;p&gt;When a user creates a password, you should never store it as plain text in your database.&lt;/p&gt;
-&lt;p&gt;Why? Because if your database is ever hacked, every user&amp;rsquo;s password is exposed instantly.&lt;/p&gt;</description>
+&lt;p&gt;Why? Because if your database is ever hacked, every user&amp;rsquo;s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

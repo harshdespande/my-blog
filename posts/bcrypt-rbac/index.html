@@ -12,7 +12,7 @@ At first they seemed similar — both are about Security, right?
 But they solve completely different problems. Let me break it down.
 BCrypt — Password Hashing
 When a user creates a password, you should never store it as plain text in your database.
-Why? Because if your database is ever hacked, every user&rsquo;s password is exposed instantly.">
+Why? Because if your database is ever hacked, every user&rsquo;s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.">
 <meta name="author" content="Harsh">
 <link rel="canonical" href="https://harshdespande.github.io/my-blog/posts/bcrypt-rbac/">
 <link crossorigin="anonymous" href="/my-blog/assets/css/stylesheet.cd9298b33628769aa1bc1acebbbfd7aa11ce81dfe03484d479e1907760249a1d.css" integrity="sha256-zZKYszYodpqhvBrOu7/XqhHOgd/gNITUeeGQd2Akmh0=" rel="preload stylesheet" as="style">
@@ -76,7 +76,7 @@ Why? Because if your database is ever hacked, every user&rsquo;s password is exp
 At first they seemed similar — both are about Security, right?
 But they solve completely different problems. Let me break it down.
 BCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.
-Why? Because if your database is ever hacked, every user’s password is exposed instantly.">
+Why? Because if your database is ever hacked, every user’s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.">
   <meta property="og:locale" content="en_us">
   <meta property="og:type" content="article">
     <meta property="article:section" content="posts">
@@ -94,7 +94,7 @@ Why? Because if your database is ever hacked, every user’s password is exposed
 At first they seemed similar — both are about Security, right?
 But they solve completely different problems. Let me break it down.
 BCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.
-Why? Because if your database is ever hacked, every user’s password is exposed instantly.">
+Why? Because if your database is ever hacked, every user’s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.">
 
 
 <script type="application/ld+json">
@@ -123,12 +123,12 @@ Why? Because if your database is ever hacked, every user’s password is exposed
   "@type": "BlogPosting",
   "headline": "BCrypt and RBAC - Two Pillars of Application Security",
   "name": "BCrypt and RBAC - Two Pillars of Application Security",
-  "description": "When I started learning about application security, two terms kept coming up everywhere — BCrypt and RBAC.\nAt first they seemed similar — both are about Security, right?\nBut they solve completely different problems. Let me break it down.\nBCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.\nWhy? Because if your database is ever hacked, every user\u0026rsquo;s password is exposed instantly.\n",
+  "description": "When I started learning about application security, two terms kept coming up everywhere — BCrypt and RBAC.\nAt first they seemed similar — both are about Security, right?\nBut they solve completely different problems. Let me break it down.\nBCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.\nWhy? Because if your database is ever hacked, every user\u0026rsquo;s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.\n",
   "keywords": [
     "security", "bcrypt", "rbac", "spring-boot", "backend"
   ],
-  "articleBody": "When I started learning about application security, two terms kept coming up everywhere — BCrypt and RBAC.\nAt first they seemed similar — both are about Security, right?\nBut they solve completely different problems. Let me break it down.\nBCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.\nWhy? Because if your database is ever hacked, every user’s password is exposed instantly.\nBCrypt converts the password into an unreadable string called a hash.\nPlain text → mypass123\nBCrypt hash → $2a$12$4WZyez9ul2guo9qMGTQxNOyYkhVwJb3yUPnJSfYI2i3sr7CQrZsGW\nTry it yourself here: https://bcrypt-generator.com/\nKey Features One-way hashing — cannot be reversed Salt — same password gives different hash every time Cost Factor — intentionally slow, hard to brute force Industry Standard — Spring Security, Node.js, Django all use it RBAC — Role Based Access Control BCrypt gets you inside the application. But what can you do once inside?\nThat is where RBAC comes in.\nReal World Examples Bank:\nTeller can process transactions Branch Manager can approve large transactions Auditor can only view never modify Hospital:\nDoctor can write prescriptions Nurse can view prescriptions not write Receptionist can only book appointments Why You Need BOTH BCrypt without RBAC — passwords are safe but any user can do anything.\nRBAC without BCrypt — access is controlled but database leak exposes all passwords.\nTogether they are the minimum viable security setup for any backend application.\n",
-  "wordCount" : "237",
+  "articleBody": "When I started learning about application security, two terms kept coming up everywhere — BCrypt and RBAC.\nAt first they seemed similar — both are about Security, right?\nBut they solve completely different problems. Let me break it down.\nBCrypt — Password Hashing When a user creates a password, you should never store it as plain text in your database.\nWhy? Because if your database is ever hacked, every user’s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.\nBCrypt solves this by converting the password into an unreadable string called a hash.\nExample:\nPlain text → mypass123 BCrypt hash → $2a$12$4WZyez9ul2guo9qMGTQxNOyYkhVwJb3yUPnJSfYI2i3sr7CQrZsGW You can try it yourself here: https://bcrypt-generator.com/\nKey Features of BCrypt 1. One-way hashing\nOnce a password is hashed it cannot be reversed back to plain text. Even the developers of the application cannot see what the original password was. This is fundamentally different from encryption which can be decrypted. Hashing is a one way street.\n2. Salt\nBefore hashing BCrypt automatically adds a random string called a salt to the password. This means even if two users have the exact same password their hashes will be completely different. This defeats rainbow table attacks where hackers use precomputed hash databases to crack passwords instantly.\n3. Cost Factor / Work Factor\nThe number you see in the hash like $2a$12$ — that 12 is the cost factor. It controls how slow the hashing is. Higher the number more computing power needed to hash. This makes brute force attacks extremely expensive. As hardware gets faster over the years you can increase this number to keep up.\n4. Brute Force Resistance\nBecause BCrypt is intentionally slow an attacker trying millions of password combinations per second is slowed down dramatically. MD5 can be cracked at billions of hashes per second. BCrypt at cost factor 12 allows only around 200 to 300 hashes per second. That difference is massive when you are trying to brute force.\n5. Industry Standard\nBCrypt is not something new or experimental. It has been the industry standard since 1999. Spring Security, Node.js, Django, Laravel, Ruby on Rails — almost every major backend framework has BCrypt built in.\n6. Avalanche Effect\nChange even one character in the password and the entire hash changes completely. mypass123 and mypass124 produce totally unrelated hashes. This makes it impossible to guess the original password by studying the hash.\nWhat Happens if You Do NOT Use BCrypt Plain text storage — database leak means instant password exposure for every user MD5 or SHA1 — these are fast hashing algorithms not meant for passwords, crackable in seconds with modern GPUs Simple encryption — if the encryption key leaks all passwords are exposed at once Real world breaches like LinkedIn 2012, Adobe 2013, RockYou — all happened because passwords were stored incorrectly. Millions of users affected.\nBCrypt in Spring Boot @Bean public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); } That one line protects every password in your application automatically.\nRBAC — Role Based Access Control BCrypt answers the question — who are you?\nBut once you are inside the application the next question is — what are you allowed to do?\nThat is exactly what RBAC solves.\nRBAC stands for Role Based Access Control. Every user is assigned a role and every role has a defined set of permissions. Users can only access what their role allows. Nothing more nothing less.\nReal World Examples Bank:\nTeller → Can process transactions, cannot approve loans Branch Manager → Can approve large transactions, can view all accounts Auditor → Can only view records, can never modify anything IT Admin → Can manage systems, cannot touch financial data Hospital:\nDoctor → Can write prescriptions, can view patient history Nurse → Can view prescriptions, cannot write or modify them Receptionist → Can book appointments, cannot view medical records Lab Technician → Can upload test results, cannot view other departments Key Features of RBAC 1. Principle of Least Privilege\nEvery user gets only the minimum access they need to do their job. A junior engineer should never be able to delete production data. RBAC enforces this automatically.\n2. URL Level Protection\nEvery endpoint in your application is locked to a specific role. If an unauthorized user tries to access a restricted URL they get a 403 Forbidden error immediately.\n3. Separation of Duties\nCritical operations require different roles. One person cannot both submit and approve the same request. This prevents fraud and errors in business workflows.\n4. Scalability\nWhen a new employee joins you assign them a role. They instantly get all the right permissions for that role. When they change departments you change their role. No need to manually configure individual permissions every time.\n5. Audit and Accountability\nSince every action is tied to a role and a user you always know who did what and whether they were authorized to do it. Essential for compliance in industries like banking, healthcare and manufacturing.\n6. Easy to Manage\nInstead of managing permissions for hundreds of individual users you manage a handful of roles. Change the role permissions once and it applies to every user with that role instantly.\nRBAC in Spring Boot http.authorizeHttpRequests(auth -\u003e auth .requestMatchers(\"/admin/**\").hasRole(\"ADMIN\") .requestMatchers(\"/manager/**\").hasRole(\"MANAGER\") .requestMatchers(\"/user/**\").hasRole(\"USER\") .anyRequest().authenticated() ); Five lines of code lock down your entire application by role.\nWhy You Need BOTH Together BCrypt RBAC Protects Passwords in database Features at runtime Guards against Database breach Privilege escalation Question it answers Who are you? What can you do? BCrypt without RBAC: Passwords are stored safely. But once any user logs in they can access every feature every URL every admin panel. A newly joined intern can approve production requests. A customer can access admin dashboards.\nRBAC without BCrypt: Access is perfectly controlled by role. But if your database is ever leaked all passwords are in plain text. Attackers can log in as any user including admins bypassing your RBAC entirely.\nTogether they create defense in depth:\nBCrypt protects your credentials at rest RBAC protects your application capabilities at runtime One covers the breach scenario the other covers the insider threat scenario This is not optional. This is the baseline. Any production application without both is incomplete.\nSecurity is not a feature you add later. It is the foundation of every backend application.\n",
+  "wordCount" : "1052",
   "inLanguage": "en",
   "datePublished": "2025-06-03T00:00:00Z",
   "dateModified": "2025-06-03T00:00:00Z",
@@ -214,7 +214,7 @@ Why? Because if your database is ever hacked, every user’s password is exposed
     </h1>
     <div class="post-meta">
 
-<span title='2025-06-03 00:00:00 +0000 UTC'>June 3, 2025</span>&nbsp;·&nbsp;<span>2 min</span>&nbsp;·&nbsp;<span>Harsh</span>
+<span title='2025-06-03 00:00:00 +0000 UTC'>June 3, 2025</span>&nbsp;·&nbsp;<span>5 min</span>&nbsp;·&nbsp;<span>Harsh</span>
 
 </div>
   </header> <details class="toc"  open>
@@ -226,13 +226,21 @@ Why? Because if your database is ever hacked, every user’s password is exposed
             <li>
                 <a href="#bcrypt--password-hashing" aria-label="BCrypt — Password Hashing">BCrypt — Password Hashing</a></li>
             <li>
-                <a href="#key-features" aria-label="Key Features">Key Features</a></li>
+                <a href="#key-features-of-bcrypt" aria-label="Key Features of BCrypt">Key Features of BCrypt</a></li>
+            <li>
+                <a href="#what-happens-if-you-do-not-use-bcrypt" aria-label="What Happens if You Do NOT Use BCrypt">What Happens if You Do NOT Use BCrypt</a></li>
+            <li>
+                <a href="#bcrypt-in-spring-boot" aria-label="BCrypt in Spring Boot">BCrypt in Spring Boot</a></li>
             <li>
                 <a href="#rbac--role-based-access-control" aria-label="RBAC — Role Based Access Control">RBAC — Role Based Access Control</a></li>
             <li>
                 <a href="#real-world-examples" aria-label="Real World Examples">Real World Examples</a></li>
             <li>
-                <a href="#why-you-need-both" aria-label="Why You Need BOTH">Why You Need BOTH</a>
+                <a href="#key-features-of-rbac" aria-label="Key Features of RBAC">Key Features of RBAC</a></li>
+            <li>
+                <a href="#rbac-in-spring-boot" aria-label="RBAC in Spring Boot">RBAC in Spring Boot</a></li>
+            <li>
+                <a href="#why-you-need-both-together" aria-label="Why You Need BOTH Together">Why You Need BOTH Together</a>
             </li>
         </ul>
     </div>
@@ -243,38 +251,122 @@ Why? Because if your database is ever hacked, every user’s password is exposed
 <p>But they solve completely different problems. Let me break it down.</p>
 <h2 id="bcrypt--password-hashing">BCrypt — Password Hashing<a hidden class="anchor" aria-hidden="true" href="#bcrypt--password-hashing">#</a></h2>
 <p>When a user creates a password, you should never store it as plain text in your database.</p>
-<p>Why? Because if your database is ever hacked, every user&rsquo;s password is exposed instantly.</p>
-<p>BCrypt converts the password into an unreadable string called a hash.</p>
-<p>Plain text → mypass123</p>
-<p>BCrypt hash → $2a$12$4WZyez9ul2guo9qMGTQxNOyYkhVwJb3yUPnJSfYI2i3sr7CQrZsGW</p>
-<p>Try it yourself here: <a href="https://bcrypt-generator.com/">https://bcrypt-generator.com/</a></p>
-<h2 id="key-features">Key Features<a hidden class="anchor" aria-hidden="true" href="#key-features">#</a></h2>
-<ol>
-<li>One-way hashing — cannot be reversed</li>
-<li>Salt — same password gives different hash every time</li>
-<li>Cost Factor — intentionally slow, hard to brute force</li>
-<li>Industry Standard — Spring Security, Node.js, Django all use it</li>
-</ol>
+<p>Why? Because if your database is ever hacked, every user&rsquo;s password is exposed instantly. Even if you encrypt your database, plain text passwords are a ticking time bomb.</p>
+<p>BCrypt solves this by converting the password into an unreadable string called a hash.</p>
+<p><strong>Example:</strong></p>
+<ul>
+<li>Plain text → mypass123</li>
+<li>BCrypt hash → $2a$12$4WZyez9ul2guo9qMGTQxNOyYkhVwJb3yUPnJSfYI2i3sr7CQrZsGW</li>
+</ul>
+<p>You can try it yourself here: <a href="https://bcrypt-generator.com/">https://bcrypt-generator.com/</a></p>
+<h2 id="key-features-of-bcrypt">Key Features of BCrypt<a hidden class="anchor" aria-hidden="true" href="#key-features-of-bcrypt">#</a></h2>
+<p><strong>1. One-way hashing</strong></p>
+<p>Once a password is hashed it cannot be reversed back to plain text. Even the developers of the application cannot see what the original password was. This is fundamentally different from encryption which can be decrypted. Hashing is a one way street.</p>
+<p><strong>2. Salt</strong></p>
+<p>Before hashing BCrypt automatically adds a random string called a salt to the password. This means even if two users have the exact same password their hashes will be completely different. This defeats rainbow table attacks where hackers use precomputed hash databases to crack passwords instantly.</p>
+<p><strong>3. Cost Factor / Work Factor</strong></p>
+<p>The number you see in the hash like $2a$12$ — that 12 is the cost factor. It controls how slow the hashing is. Higher the number more computing power needed to hash. This makes brute force attacks extremely expensive. As hardware gets faster over the years you can increase this number to keep up.</p>
+<p><strong>4. Brute Force Resistance</strong></p>
+<p>Because BCrypt is intentionally slow an attacker trying millions of password combinations per second is slowed down dramatically. MD5 can be cracked at billions of hashes per second. BCrypt at cost factor 12 allows only around 200 to 300 hashes per second. That difference is massive when you are trying to brute force.</p>
+<p><strong>5. Industry Standard</strong></p>
+<p>BCrypt is not something new or experimental. It has been the industry standard since 1999. Spring Security, Node.js, Django, Laravel, Ruby on Rails — almost every major backend framework has BCrypt built in.</p>
+<p><strong>6. Avalanche Effect</strong></p>
+<p>Change even one character in the password and the entire hash changes completely. mypass123 and mypass124 produce totally unrelated hashes. This makes it impossible to guess the original password by studying the hash.</p>
+<h2 id="what-happens-if-you-do-not-use-bcrypt">What Happens if You Do NOT Use BCrypt<a hidden class="anchor" aria-hidden="true" href="#what-happens-if-you-do-not-use-bcrypt">#</a></h2>
+<ul>
+<li>Plain text storage — database leak means instant password exposure for every user</li>
+<li>MD5 or SHA1 — these are fast hashing algorithms not meant for passwords, crackable in seconds with modern GPUs</li>
+<li>Simple encryption — if the encryption key leaks all passwords are exposed at once</li>
+</ul>
+<p>Real world breaches like LinkedIn 2012, Adobe 2013, RockYou — all happened because passwords were stored incorrectly. Millions of users affected.</p>
+<h2 id="bcrypt-in-spring-boot">BCrypt in Spring Boot<a hidden class="anchor" aria-hidden="true" href="#bcrypt-in-spring-boot">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#a6e22e">@Bean</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> PasswordEncoder <span style="color:#a6e22e">passwordEncoder</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> BCryptPasswordEncoder(12);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>That one line protects every password in your application automatically.</p>
+<hr>
 <h2 id="rbac--role-based-access-control">RBAC — Role Based Access Control<a hidden class="anchor" aria-hidden="true" href="#rbac--role-based-access-control">#</a></h2>
-<p>BCrypt gets you inside the application. But what can you do once inside?</p>
-<p>That is where RBAC comes in.</p>
+<p>BCrypt answers the question — who are you?</p>
+<p>But once you are inside the application the next question is — what are you allowed to do?</p>
+<p>That is exactly what RBAC solves.</p>
+<p>RBAC stands for Role Based Access Control. Every user is assigned a role and every role has a defined set of permissions. Users can only access what their role allows. Nothing more nothing less.</p>
 <h2 id="real-world-examples">Real World Examples<a hidden class="anchor" aria-hidden="true" href="#real-world-examples">#</a></h2>
-<p>Bank:</p>
+<p><strong>Bank:</strong></p>
 <ul>
-<li>Teller can process transactions</li>
-<li>Branch Manager can approve large transactions</li>
-<li>Auditor can only view never modify</li>
+<li>Teller → Can process transactions, cannot approve loans</li>
+<li>Branch Manager → Can approve large transactions, can view all accounts</li>
+<li>Auditor → Can only view records, can never modify anything</li>
+<li>IT Admin → Can manage systems, cannot touch financial data</li>
 </ul>
-<p>Hospital:</p>
+<p><strong>Hospital:</strong></p>
 <ul>
-<li>Doctor can write prescriptions</li>
-<li>Nurse can view prescriptions not write</li>
-<li>Receptionist can only book appointments</li>
+<li>Doctor → Can write prescriptions, can view patient history</li>
+<li>Nurse → Can view prescriptions, cannot write or modify them</li>
+<li>Receptionist → Can book appointments, cannot view medical records</li>
+<li>Lab Technician → Can upload test results, cannot view other departments</li>
 </ul>
-<h2 id="why-you-need-both">Why You Need BOTH<a hidden class="anchor" aria-hidden="true" href="#why-you-need-both">#</a></h2>
-<p>BCrypt without RBAC — passwords are safe but any user can do anything.</p>
-<p>RBAC without BCrypt — access is controlled but database leak exposes all passwords.</p>
-<p>Together they are the minimum viable security setup for any backend application.</p>
+<h2 id="key-features-of-rbac">Key Features of RBAC<a hidden class="anchor" aria-hidden="true" href="#key-features-of-rbac">#</a></h2>
+<p><strong>1. Principle of Least Privilege</strong></p>
+<p>Every user gets only the minimum access they need to do their job. A junior engineer should never be able to delete production data. RBAC enforces this automatically.</p>
+<p><strong>2. URL Level Protection</strong></p>
+<p>Every endpoint in your application is locked to a specific role. If an unauthorized user tries to access a restricted URL they get a 403 Forbidden error immediately.</p>
+<p><strong>3. Separation of Duties</strong></p>
+<p>Critical operations require different roles. One person cannot both submit and approve the same request. This prevents fraud and errors in business workflows.</p>
+<p><strong>4. Scalability</strong></p>
+<p>When a new employee joins you assign them a role. They instantly get all the right permissions for that role. When they change departments you change their role. No need to manually configure individual permissions every time.</p>
+<p><strong>5. Audit and Accountability</strong></p>
+<p>Since every action is tied to a role and a user you always know who did what and whether they were authorized to do it. Essential for compliance in industries like banking, healthcare and manufacturing.</p>
+<p><strong>6. Easy to Manage</strong></p>
+<p>Instead of managing permissions for hundreds of individual users you manage a handful of roles. Change the role permissions once and it applies to every user with that role instantly.</p>
+<h2 id="rbac-in-spring-boot">RBAC in Spring Boot<a hidden class="anchor" aria-hidden="true" href="#rbac-in-spring-boot">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>http.<span style="color:#a6e22e">authorizeHttpRequests</span>(auth <span style="color:#f92672">-&gt;</span> auth
+</span></span><span style="display:flex;"><span>    .<span style="color:#a6e22e">requestMatchers</span>(<span style="color:#e6db74">&#34;/admin/**&#34;</span>).<span style="color:#a6e22e">hasRole</span>(<span style="color:#e6db74">&#34;ADMIN&#34;</span>)
+</span></span><span style="display:flex;"><span>    .<span style="color:#a6e22e">requestMatchers</span>(<span style="color:#e6db74">&#34;/manager/**&#34;</span>).<span style="color:#a6e22e">hasRole</span>(<span style="color:#e6db74">&#34;MANAGER&#34;</span>)
+</span></span><span style="display:flex;"><span>    .<span style="color:#a6e22e">requestMatchers</span>(<span style="color:#e6db74">&#34;/user/**&#34;</span>).<span style="color:#a6e22e">hasRole</span>(<span style="color:#e6db74">&#34;USER&#34;</span>)
+</span></span><span style="display:flex;"><span>    .<span style="color:#a6e22e">anyRequest</span>().<span style="color:#a6e22e">authenticated</span>()
+</span></span><span style="display:flex;"><span>);
+</span></span></code></pre></div><p>Five lines of code lock down your entire application by role.</p>
+<hr>
+<h2 id="why-you-need-both-together">Why You Need BOTH Together<a hidden class="anchor" aria-hidden="true" href="#why-you-need-both-together">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th></th>
+					<th>BCrypt</th>
+					<th>RBAC</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Protects</td>
+					<td>Passwords in database</td>
+					<td>Features at runtime</td>
+			</tr>
+			<tr>
+					<td>Guards against</td>
+					<td>Database breach</td>
+					<td>Privilege escalation</td>
+			</tr>
+			<tr>
+					<td>Question it answers</td>
+					<td>Who are you?</td>
+					<td>What can you do?</td>
+			</tr>
+	</tbody>
+</table>
+<p><strong>BCrypt without RBAC:</strong>
+Passwords are stored safely. But once any user logs in they can access every feature every URL every admin panel. A newly joined intern can approve production requests. A customer can access admin dashboards.</p>
+<p><strong>RBAC without BCrypt:</strong>
+Access is perfectly controlled by role. But if your database is ever leaked all passwords are in plain text. Attackers can log in as any user including admins bypassing your RBAC entirely.</p>
+<p><strong>Together they create defense in depth:</strong></p>
+<ul>
+<li>BCrypt protects your credentials at rest</li>
+<li>RBAC protects your application capabilities at runtime</li>
+<li>One covers the breach scenario the other covers the insider threat scenario</li>
+</ul>
+<p>This is not optional. This is the baseline. Any production application without both is incomplete.</p>
+<p>Security is not a feature you add later. It is the foundation of every backend application.</p>
 
 
   </div>
