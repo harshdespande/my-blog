@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Security on My New Hugo Project</title>
+		<link>https://example.org/tags/security/</link>
+		<description>Recent content in Security on My New Hugo Project</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Tue, 03 Jun 2025 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://example.org/tags/security/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>BCrypt and RBAC - Two Pillars of Application Security</title>
+				<link>https://example.org/posts/bcrypt-rbac/</link>
+				<pubDate>Tue, 03 Jun 2025 00:00:00 +0000</pubDate>
+				<guid>https://example.org/posts/bcrypt-rbac/</guid>
+				<description>&lt;p&gt;When I started learning about application security, two terms kept coming up everywhere — BCrypt and RBAC.&lt;/p&gt;&#xA;&lt;p&gt;At first they seemed similar — both are about Security, right?&lt;/p&gt;&#xA;&lt;p&gt;But they solve completely different problems. Let me break it down.&lt;/p&gt;&#xA;&lt;h2 id=&#34;bcrypt--password-hashing&#34;&gt;BCrypt — Password Hashing&lt;/h2&gt;&#xA;&lt;p&gt;When a user creates a password, you should never store it as plain text in your database.&lt;/p&gt;&#xA;&lt;p&gt;Why? Because if your database is ever hacked, every user&amp;rsquo;s password is exposed instantly.&lt;/p&gt;</description>
+			</item>
+	</channel>
+</rss>
