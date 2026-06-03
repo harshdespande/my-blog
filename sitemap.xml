@@ -3,33 +3,33 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://example.org/tags/backend/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/backend/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/tags/bcrypt/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/bcrypt/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/posts/bcrypt-rbac/</loc>
+    <loc>https://harshdespande.github.io/my-blog/posts/bcrypt-rbac/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/</loc>
+    <loc>https://harshdespande.github.io/my-blog/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/posts/</loc>
+    <loc>https://harshdespande.github.io/my-blog/posts/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/tags/rbac/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/rbac/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/tags/security/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/security/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/tags/spring-boot/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/spring-boot/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/tags/</loc>
+    <loc>https://harshdespande.github.io/my-blog/tags/</loc>
     <lastmod>2025-06-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://example.org/categories/</loc>
+    <loc>https://harshdespande.github.io/my-blog/categories/</loc>
   </url>
 </urlset>
