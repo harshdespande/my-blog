@@ -6,8 +6,15 @@
     <description>Recent content on Harsh Despande</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 03 Jun 2025 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 01 Nov 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://harshdespande.github.io/my-blog/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work</title>
+      <link>https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/</link>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 +0000</pubDate>
+      <guid>https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/</guid>
+      <description>How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.</description>
+    </item>
     <item>
       <title>BCrypt and RBAC - Two Pillars of Application Security</title>
       <link>https://harshdespande.github.io/my-blog/posts/bcrypt-rbac/</link>

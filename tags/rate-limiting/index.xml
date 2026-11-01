@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Rate-Limiting on Harsh Despande</title>
+    <link>https://harshdespande.github.io/my-blog/tags/rate-limiting/</link>
+    <description>Recent content in Rate-Limiting on Harsh Despande</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 01 Nov 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://harshdespande.github.io/my-blog/tags/rate-limiting/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work</title>
+      <link>https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/</link>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 +0000</pubDate>
+      <guid>https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/</guid>
+      <description>How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.</description>
+    </item>
+  </channel>
+</rss>

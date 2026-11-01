@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work | Harsh Despande</title>
+<meta name="keywords" content="security, rate-limiting, serverless, postgresql, nodejs, backend">
+<meta name="description" content="How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.">
+<meta name="author" content="Harsh">
+<link rel="canonical" href="https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/">
+<link crossorigin="anonymous" href="/my-blog/assets/css/stylesheet.cd9298b33628769aa1bc1acebbbfd7aa11ce81dfe03484d479e1907760249a1d.css" integrity="sha256-zZKYszYodpqhvBrOu7/XqhHOgd/gNITUeeGQd2Akmh0=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://harshdespande.github.io/my-blog/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://harshdespande.github.io/my-blog/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://harshdespande.github.io/my-blog/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://harshdespande.github.io/my-blog/apple-touch-icon.png">
+<link rel="mask-icon" href="https://harshdespande.github.io/my-blog/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/">
+  <meta property="og:site_name" content="Harsh Despande">
+  <meta property="og:title" content="Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work">
+  <meta property="og:description" content="How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2026-11-01T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-11-01T00:00:00+00:00">
+    <meta property="article:tag" content="Security">
+    <meta property="article:tag" content="Rate-Limiting">
+    <meta property="article:tag" content="Serverless">
+    <meta property="article:tag" content="Postgresql">
+    <meta property="article:tag" content="Nodejs">
+    <meta property="article:tag" content="Backend">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work">
+  <meta name="twitter:description" content="How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://harshdespande.github.io/my-blog/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Rate Limiting on Serverless - Why In-Memory Counters Don't Work",
+      "item": "https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Rate Limiting on Serverless - Why In-Memory Counters Don't Work",
+  "name": "Rate Limiting on Serverless - Why In-Memory Counters Don\u0027t Work",
+  "description": "How I added rate limiting to a Node.js app on Vercel, why the usual in-memory approach fails on serverless, and how a single PostgreSQL query solved it.",
+  "keywords": [
+    "security", "rate-limiting", "serverless", "postgresql", "nodejs", "backend"
+  ],
+  "articleBody": "While building an e-book store with user accounts and online payments, I realised the login page had a big problem.\nAnyone could try passwords on it as many times as they wanted.\nThat is how accounts get hacked. So I needed rate limiting. And then I found out the usual way of doing it does not work where my app was hosted.\nWhat is Rate Limiting? Rate limiting means putting a cap on how many times someone can do something in a fixed amount of time.\nExample:\nAllow 8 login attempts per email every 15 minutes The 9th attempt gets: “Too many attempts. Please try again in 15 minutes.” It sounds small, but it stops a lot of attacks.\nWhat Attacks Does It Stop? 1. Password guessing (brute force)\nA bot tries thousands of common passwords on one account. With a limit of 8 tries every 15 minutes, trying even 10,000 passwords would take more than 10 days. The attack becomes useless.\n2. Email spam\nThe “Forgot password” button sends an email. Without a limit, someone can press it 500 times and flood a person’s inbox. It also burns through your email service’s quota and can get your domain marked as spam.\n3. Fake sign-ups and abuse\nBots creating hundreds of fake accounts, or hammering the payment API to create orders.\nThe Usual Way - and Why It Failed Most tutorials show something like this:\nconst attempts = {}; // stored in memory function isAllowed(key) { attempts[key] = (attempts[key] || 0) + 1; return attempts[key] \u003c= 8; } The counter lives in the server’s memory. On a normal server that runs all day, this works.\nBut my app runs on Vercel, which is serverless.\nOn serverless, there is no single server running all the time. Instead:\nMany small copies of the app start up when requests come in Each copy has its own memory Copies shut down when they are idle, and their memory is wiped So one request might go to copy A, the next to copy B. Copy A’s counter says 3, copy B’s says 1. After a few minutes both are gone and everything starts again from 0.\nThe rate limiter would basically never trigger.\nThe Fix - Keep the Counter in the Database The counter needs to live somewhere every copy of the app can see, and that survives restarts. I already had a PostgreSQL database, so I used that. No new service, no extra cost.\nThe table:\nCREATE TABLE IF NOT EXISTS rate_limits ( key TEXT PRIMARY KEY, window_start TIMESTAMPTZ NOT NULL DEFAULT now(), count INTEGER NOT NULL DEFAULT 0 ); The key is what we are counting, for example login-email:someone@gmail.com or signup-ip:49.36.12.7.\nOne Query Does Everything This is the part I liked most. A single SQL statement:\ncreates the counter if it does not exist, adds 1 if we are still inside the time window, resets it to 1 if the window has ended, and tells us the new count. INSERT INTO rate_limits (key, window_start, count) VALUES ($1, now(), 1) ON CONFLICT (key) DO UPDATE SET count = CASE WHEN rate_limits.window_start \u003c now() - make_interval(secs =\u003e $2) THEN 1 ELSE rate_limits.count + 1 END, window_start = CASE WHEN rate_limits.window_start \u003c now() - make_interval(secs =\u003e $2) THEN now() ELSE rate_limits.window_start END RETURNING count; $1 is the key and $2 is the window length in seconds.\nBecause it is one statement, the database handles two requests arriving at the same time correctly. There is no gap where two copies of the app both read “7” and both write “8”.\nIf the returned count is bigger than the limit, the request is refused with HTTP status 429 Too Many Requests.\nWrapping It as Express Middleware function limit(name, max, windowSec, keyFn) { return async (req, res, next) =\u003e { const key = name + ':' + keyFn(req); const { ok } = await hitLimit(key, max, windowSec); if (ok) return next(); res.status(429).json({ error: 'Too many attempts. Please try again later.' }); }; } app.post('/api/auth/login', limit('login-ip', 30, 900, byIp), limit('login-email', 8, 900, byEmail), loginHandler ); Now adding a limit to any route is one line.\nThe Limits I Chose Action Limit Counted by Login 8 per 15 min email Login 30 per 15 min IP address Sign up 5 per hour IP address Forgot password 3 per hour email Create payment order 10 per 10 min user Why count login by both email and IP?\nBy email protects one account from being attacked from many different IPs. By IP stops one attacker from trying many different accounts. Things I Had to Think About 1. Fail open, not closed\nIf the database has a problem, what should the limiter do? I chose to let the request through and log the error. Otherwise a small database issue would lock every user out of their account.\n2. Clean up old rows\nEvery new email and IP creates a row. To stop the table growing forever, about 1 in 100 requests also deletes rows older than a day.\n3. Getting the real IP\nBehind Vercel’s proxy, req.socket.remoteAddress is the proxy, not the user. The real address is in the x-forwarded-for header.\n4. Don’t reveal too much\nFor “Forgot password”, when the limit is hit I don’t show an error. The page says the same thing as always, but simply stops sending more emails. That way nobody can use the page to check which emails have accounts.\nFixed Window vs Other Methods What I built is called a fixed window limiter. It is the simplest kind.\nIts weakness: someone could make 8 attempts at 10:14 and 8 more at 10:15, right after the window resets. For a login page that is fine. If you need something stricter, look at:\nSliding window - looks at the last 15 minutes from right now Token bucket - tokens refill slowly, and each request uses one There are also ready-made services like Upstash Redis that do this for serverless apps. I used the database because I already had one and it needed no new account or cost.\nKey Takeaway On serverless, anything stored in memory is temporary and not shared. That breaks rate limiters, sessions, caches and counters.\nIf something must be remembered across requests, it needs to live in shared storage like a database or Redis.\nRate limiting is one of those features nobody notices until it’s missing. It took less than 100 lines and closed some of the most common ways a login page gets abused.\n",
+  "wordCount" : "1079",
+  "inLanguage": "en",
+  "datePublished": "2026-11-01T00:00:00Z",
+  "dateModified": "2026-11-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Harsh"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://harshdespande.github.io/my-blog/posts/rate-limiting-on-serverless/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Harsh Despande",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://harshdespande.github.io/my-blog/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://harshdespande.github.io/my-blog/" accesskey="h" title="Harsh Despande (Alt + H)">Harsh Despande</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://harshdespande.github.io/my-blog/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://harshdespande.github.io/my-blog/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <nav class="breadcrumbs" role="navigation" aria-label="Breadcrumb">
+            <a href="/my-blog/">Home</a>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <a href="/my-blog/posts/">Posts</a>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+</nav>
+    <h1 class="post-title entry-hint-parent">
+      Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-01 00:00:00 +0000 UTC'>November 1, 2026</span>&nbsp;·&nbsp;<span>6 min</span>&nbsp;·&nbsp;<span>Harsh</span>
+
+</div>
+  </header> <details class="toc"  open>
+    <summary accesskey="c" title="(Alt + C)">
+        <span class="title">Table of Contents</span>
+    </summary>
+
+    <div class="inner"><ul>
+            <li>
+                <a href="#what-is-rate-limiting" aria-label="What is Rate Limiting?">What is Rate Limiting?</a></li>
+            <li>
+                <a href="#what-attacks-does-it-stop" aria-label="What Attacks Does It Stop?">What Attacks Does It Stop?</a></li>
+            <li>
+                <a href="#the-usual-way---and-why-it-failed" aria-label="The Usual Way - and Why It Failed">The Usual Way - and Why It Failed</a></li>
+            <li>
+                <a href="#the-fix---keep-the-counter-in-the-database" aria-label="The Fix - Keep the Counter in the Database">The Fix - Keep the Counter in the Database</a></li>
+            <li>
+                <a href="#one-query-does-everything" aria-label="One Query Does Everything">One Query Does Everything</a></li>
+            <li>
+                <a href="#wrapping-it-as-express-middleware" aria-label="Wrapping It as Express Middleware">Wrapping It as Express Middleware</a></li>
+            <li>
+                <a href="#the-limits-i-chose" aria-label="The Limits I Chose">The Limits I Chose</a></li>
+            <li>
+                <a href="#things-i-had-to-think-about" aria-label="Things I Had to Think About">Things I Had to Think About</a></li>
+            <li>
+                <a href="#fixed-window-vs-other-methods" aria-label="Fixed Window vs Other Methods">Fixed Window vs Other Methods</a></li>
+            <li>
+                <a href="#key-takeaway" aria-label="Key Takeaway">Key Takeaway</a>
+            </li>
+        </ul>
+    </div>
+</details>
+
+  <div class="post-content md-content"><p>While building an e-book store with user accounts and online payments, I realised the login page had a big problem.</p>
+<p>Anyone could try passwords on it <strong>as many times as they wanted.</strong></p>
+<p>That is how accounts get hacked. So I needed rate limiting. And then I found out the usual way of doing it does not work where my app was hosted.</p>
+<h2 id="what-is-rate-limiting">What is Rate Limiting?<a hidden class="anchor" aria-hidden="true" href="#what-is-rate-limiting">#</a></h2>
+<p>Rate limiting means putting a cap on how many times someone can do something in a fixed amount of time.</p>
+<p><strong>Example:</strong></p>
+<ul>
+<li>Allow <strong>8 login attempts</strong> per email every <strong>15 minutes</strong></li>
+<li>The 9th attempt gets: <em>&ldquo;Too many attempts. Please try again in 15 minutes.&rdquo;</em></li>
+</ul>
+<p>It sounds small, but it stops a lot of attacks.</p>
+<h2 id="what-attacks-does-it-stop">What Attacks Does It Stop?<a hidden class="anchor" aria-hidden="true" href="#what-attacks-does-it-stop">#</a></h2>
+<p><strong>1. Password guessing (brute force)</strong></p>
+<p>A bot tries thousands of common passwords on one account. With a limit of 8 tries every 15 minutes, trying even 10,000 passwords would take more than 10 days. The attack becomes useless.</p>
+<p><strong>2. Email spam</strong></p>
+<p>The &ldquo;Forgot password&rdquo; button sends an email. Without a limit, someone can press it 500 times and flood a person&rsquo;s inbox. It also burns through your email service&rsquo;s quota and can get your domain marked as spam.</p>
+<p><strong>3. Fake sign-ups and abuse</strong></p>
+<p>Bots creating hundreds of fake accounts, or hammering the payment API to create orders.</p>
+<h2 id="the-usual-way---and-why-it-failed">The Usual Way - and Why It Failed<a hidden class="anchor" aria-hidden="true" href="#the-usual-way---and-why-it-failed">#</a></h2>
+<p>Most tutorials show something like this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-js" data-lang="js"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">attempts</span> <span style="color:#f92672">=</span> {}; <span style="color:#75715e">// stored in memory
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">isAllowed</span>(<span style="color:#a6e22e">key</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">attempts</span>[<span style="color:#a6e22e">key</span>] <span style="color:#f92672">=</span> (<span style="color:#a6e22e">attempts</span>[<span style="color:#a6e22e">key</span>] <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">attempts</span>[<span style="color:#a6e22e">key</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">8</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The counter lives in the server&rsquo;s memory. On a normal server that runs all day, this works.</p>
+<p>But my app runs on <strong>Vercel</strong>, which is <strong>serverless</strong>.</p>
+<p>On serverless, there is no single server running all the time. Instead:</p>
+<ul>
+<li>Many small copies of the app start up when requests come in</li>
+<li>Each copy has <strong>its own memory</strong></li>
+<li>Copies shut down when they are idle, and their memory is wiped</li>
+</ul>
+<p>So one request might go to copy A, the next to copy B. Copy A&rsquo;s counter says 3, copy B&rsquo;s says 1. After a few minutes both are gone and everything starts again from 0.</p>
+<p><strong>The rate limiter would basically never trigger.</strong></p>
+<h2 id="the-fix---keep-the-counter-in-the-database">The Fix - Keep the Counter in the Database<a hidden class="anchor" aria-hidden="true" href="#the-fix---keep-the-counter-in-the-database">#</a></h2>
+<p>The counter needs to live somewhere <strong>every copy of the app can see</strong>, and that <strong>survives restarts</strong>. I already had a PostgreSQL database, so I used that. No new service, no extra cost.</p>
+<p><strong>The table:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">IF</span> <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">EXISTS</span> rate_limits (
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">key</span>          TEXT <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span>,
+</span></span><span style="display:flex;"><span>  window_start TIMESTAMPTZ <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> now(),
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">count</span>        INTEGER <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>);
+</span></span></code></pre></div><p>The <code>key</code> is what we are counting, for example <code>login-email:someone@gmail.com</code> or <code>signup-ip:49.36.12.7</code>.</p>
+<h2 id="one-query-does-everything">One Query Does Everything<a hidden class="anchor" aria-hidden="true" href="#one-query-does-everything">#</a></h2>
+<p>This is the part I liked most. A single SQL statement:</p>
+<ul>
+<li>creates the counter if it does not exist,</li>
+<li>adds 1 if we are still inside the time window,</li>
+<li>resets it to 1 if the window has ended,</li>
+<li>and tells us the new count.</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> rate_limits (<span style="color:#66d9ef">key</span>, window_start, <span style="color:#66d9ef">count</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">VALUES</span> (<span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">1</span>, now(), <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">ON</span> CONFLICT (<span style="color:#66d9ef">key</span>) <span style="color:#66d9ef">DO</span> <span style="color:#66d9ef">UPDATE</span> <span style="color:#66d9ef">SET</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">count</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">CASE</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">WHEN</span> rate_limits.window_start <span style="color:#f92672">&lt;</span> now() <span style="color:#f92672">-</span> make_interval(secs <span style="color:#f92672">=&gt;</span> <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">THEN</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">ELSE</span> rate_limits.<span style="color:#66d9ef">count</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">END</span>,
+</span></span><span style="display:flex;"><span>  window_start <span style="color:#f92672">=</span> <span style="color:#66d9ef">CASE</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">WHEN</span> rate_limits.window_start <span style="color:#f92672">&lt;</span> now() <span style="color:#f92672">-</span> make_interval(secs <span style="color:#f92672">=&gt;</span> <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">THEN</span> now()
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">ELSE</span> rate_limits.window_start
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">END</span>
+</span></span><span style="display:flex;"><span>RETURNING <span style="color:#66d9ef">count</span>;
+</span></span></code></pre></div><p><code>$1</code> is the key and <code>$2</code> is the window length in seconds.</p>
+<p>Because it is <strong>one statement</strong>, the database handles two requests arriving at the same time correctly. There is no gap where two copies of the app both read &ldquo;7&rdquo; and both write &ldquo;8&rdquo;.</p>
+<p>If the returned count is bigger than the limit, the request is refused with HTTP status <strong>429 Too Many Requests</strong>.</p>
+<h2 id="wrapping-it-as-express-middleware">Wrapping It as Express Middleware<a hidden class="anchor" aria-hidden="true" href="#wrapping-it-as-express-middleware">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-js" data-lang="js"><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">limit</span>(<span style="color:#a6e22e">name</span>, <span style="color:#a6e22e">max</span>, <span style="color:#a6e22e">windowSec</span>, <span style="color:#a6e22e">keyFn</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">async</span> (<span style="color:#a6e22e">req</span>, <span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">next</span>) =&gt; {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">key</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">name</span> <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;:&#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">keyFn</span>(<span style="color:#a6e22e">req</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> { <span style="color:#a6e22e">ok</span> } <span style="color:#f92672">=</span> <span style="color:#66d9ef">await</span> <span style="color:#a6e22e">hitLimit</span>(<span style="color:#a6e22e">key</span>, <span style="color:#a6e22e">max</span>, <span style="color:#a6e22e">windowSec</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">ok</span>) <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">next</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">status</span>(<span style="color:#ae81ff">429</span>).<span style="color:#a6e22e">json</span>({ <span style="color:#a6e22e">error</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#39;Too many attempts. Please try again later.&#39;</span> });
+</span></span><span style="display:flex;"><span>  };
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">app</span>.<span style="color:#a6e22e">post</span>(<span style="color:#e6db74">&#39;/api/auth/login&#39;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">limit</span>(<span style="color:#e6db74">&#39;login-ip&#39;</span>, <span style="color:#ae81ff">30</span>, <span style="color:#ae81ff">900</span>, <span style="color:#a6e22e">byIp</span>),
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">limit</span>(<span style="color:#e6db74">&#39;login-email&#39;</span>, <span style="color:#ae81ff">8</span>, <span style="color:#ae81ff">900</span>, <span style="color:#a6e22e">byEmail</span>),
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">loginHandler</span>
+</span></span><span style="display:flex;"><span>);
+</span></span></code></pre></div><p>Now adding a limit to any route is one line.</p>
+<h2 id="the-limits-i-chose">The Limits I Chose<a hidden class="anchor" aria-hidden="true" href="#the-limits-i-chose">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>Action</th>
+					<th>Limit</th>
+					<th>Counted by</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Login</td>
+					<td>8 per 15 min</td>
+					<td>email</td>
+			</tr>
+			<tr>
+					<td>Login</td>
+					<td>30 per 15 min</td>
+					<td>IP address</td>
+			</tr>
+			<tr>
+					<td>Sign up</td>
+					<td>5 per hour</td>
+					<td>IP address</td>
+			</tr>
+			<tr>
+					<td>Forgot password</td>
+					<td>3 per hour</td>
+					<td>email</td>
+			</tr>
+			<tr>
+					<td>Create payment order</td>
+					<td>10 per 10 min</td>
+					<td>user</td>
+			</tr>
+	</tbody>
+</table>
+<p><strong>Why count login by both email and IP?</strong></p>
+<ul>
+<li><strong>By email</strong> protects one account from being attacked from many different IPs.</li>
+<li><strong>By IP</strong> stops one attacker from trying many different accounts.</li>
+</ul>
+<h2 id="things-i-had-to-think-about">Things I Had to Think About<a hidden class="anchor" aria-hidden="true" href="#things-i-had-to-think-about">#</a></h2>
+<p><strong>1. Fail open, not closed</strong></p>
+<p>If the database has a problem, what should the limiter do? I chose to <strong>let the request through</strong> and log the error. Otherwise a small database issue would lock every user out of their account.</p>
+<p><strong>2. Clean up old rows</strong></p>
+<p>Every new email and IP creates a row. To stop the table growing forever, about 1 in 100 requests also deletes rows older than a day.</p>
+<p><strong>3. Getting the real IP</strong></p>
+<p>Behind Vercel&rsquo;s proxy, <code>req.socket.remoteAddress</code> is the proxy, not the user. The real address is in the <code>x-forwarded-for</code> header.</p>
+<p><strong>4. Don&rsquo;t reveal too much</strong></p>
+<p>For &ldquo;Forgot password&rdquo;, when the limit is hit I don&rsquo;t show an error. The page says the same thing as always, but simply stops sending more emails. That way nobody can use the page to check which emails have accounts.</p>
+<h2 id="fixed-window-vs-other-methods">Fixed Window vs Other Methods<a hidden class="anchor" aria-hidden="true" href="#fixed-window-vs-other-methods">#</a></h2>
+<p>What I built is called a <strong>fixed window</strong> limiter. It is the simplest kind.</p>
+<p>Its weakness: someone could make 8 attempts at 10:14 and 8 more at 10:15, right after the window resets. For a login page that is fine. If you need something stricter, look at:</p>
+<ul>
+<li><strong>Sliding window</strong> - looks at the last 15 minutes from right now</li>
+<li><strong>Token bucket</strong> - tokens refill slowly, and each request uses one</li>
+</ul>
+<p>There are also ready-made services like Upstash Redis that do this for serverless apps. I used the database because I already had one and it needed no new account or cost.</p>
+<h2 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h2>
+<p>On serverless, <strong>anything stored in memory is temporary and not shared.</strong> That breaks rate limiters, sessions, caches and counters.</p>
+<p>If something must be remembered across requests, it needs to live in shared storage like a database or Redis.</p>
+<p>Rate limiting is one of those features nobody notices until it&rsquo;s missing. It took less than 100 lines and closed some of the most common ways a login page gets abused.</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://harshdespande.github.io/my-blog/tags/security/">Security</a></li>
+      <li><a href="https://harshdespande.github.io/my-blog/tags/rate-limiting/">Rate-Limiting</a></li>
+      <li><a href="https://harshdespande.github.io/my-blog/tags/serverless/">Serverless</a></li>
+      <li><a href="https://harshdespande.github.io/my-blog/tags/postgresql/">Postgresql</a></li>
+      <li><a href="https://harshdespande.github.io/my-blog/tags/nodejs/">Nodejs</a></li>
+      <li><a href="https://harshdespande.github.io/my-blog/tags/backend/">Backend</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="next" href="https://harshdespande.github.io/my-blog/posts/bcrypt-rbac/">
+    <span class="title">Next »</span>
+    <span>BCrypt and RBAC - Two Pillars of Application Security</span>
+  </a>
+</nav>
+
+
+<ul class="share-buttons">
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on x"
+            href="https://x.com/intent/tweet/?text=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work&amp;url=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f&amp;hashtags=security%2crate-limiting%2cserverless%2cpostgresql%2cnodejs%2cbackend">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M512 62.554 L 512 449.446 C 512 483.97 483.97 512 449.446 512 L 62.554 512 C 28.03 512 0 483.97 0 449.446 L 0 62.554 C 0 28.03 28.029 0 62.554 0 L 449.446 0 C 483.971 0 512 28.03 512 62.554 Z M 269.951 190.75 L 182.567 75.216 L 56 75.216 L 207.216 272.95 L 63.9 436.783 L 125.266 436.783 L 235.9 310.383 L 332.567 436.783 L 456 436.783 L 298.367 228.367 L 432.367 75.216 L 371.033 75.216 Z M 127.633 110 L 164.101 110 L 383.481 400.065 L 349.5 400.065 Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on linkedin"
+            href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f&amp;title=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work&amp;summary=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work&amp;source=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on reddit"
+            href="https://reddit.com/submit?url=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f&title=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on facebook"
+            href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on whatsapp"
+            href="https://api.whatsapp.com/send?text=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work%20-%20https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on telegram"
+            href="https://telegram.me/share/url?text=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work&amp;url=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f">
+            <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Rate Limiting on Serverless - Why In-Memory Counters Don&#39;t Work on ycombinator"
+            href="https://news.ycombinator.com/submitlink?t=Rate%20Limiting%20on%20Serverless%20-%20Why%20In-Memory%20Counters%20Don%27t%20Work&u=https%3a%2f%2fharshdespande.github.io%2fmy-blog%2fposts%2frate-limiting-on-serverless%2f">
+            <svg version="1.1" xml:space="preserve" width="30px" height="30px" viewBox="0 0 512 512" fill="currentColor"
+                xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+                <path
+                    d="M449.446 0C483.971 0 512 28.03 512 62.554L512 449.446C512 483.97 483.97 512 449.446 512L62.554 512C28.03 512 0 483.97 0 449.446L0 62.554C0 28.03 28.029 0 62.554 0L449.446 0ZM183.8767 87.9921H121.8427L230.6673 292.4508V424.0079H281.3328V292.4508L390.1575 87.9921H328.1233L256 238.2489z" />
+            </svg>
+        </a>
+    </li>
+</ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://harshdespande.github.io/my-blog/">Harsh Despande</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
